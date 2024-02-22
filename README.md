@@ -1,16 +1,8 @@
-package Data::Structure::Deserialize::Auto;
-use v5.22;
-use warnings;
+# NAME
 
-# ABSTRACT: Deserializes data structures from perl, JSON, YAML, or TOML data, from strings or files
-
-=encoding UTF-8
- 
-=head1 NAME
- 
 Data::Structure::Deserialize::Auto - deserializes data structures from perl, JSON, YAML, or TOML data, from strings or files
- 
-=head1 SYNOPSIS
+
+# SYNOPSIS
 
     use Data::Structure::Deserialize::Auto qw(deserialize);
 
@@ -43,114 +35,35 @@ Data::Structure::Deserialize::Auto - deserializes data structures from perl, JSO
     $ds = deserialize($filename); #autodetects perl in referenced file
     say $ds->{b}; # 2
 
-=head1 DESCRIPTION
+# DESCRIPTION
 
-L<Data::Structure::Deserialize::Auto> is a module for converting a string in an
+[Data::Structure::Deserialize::Auto](https://metacpan.org/pod/Data%3A%3AStructure%3A%3ADeserialize%3A%3AAuto) is a module for converting a string in an
 arbitrary format (one of perl/JSON/YAML/TOML) into a perl data structure, without 
 needing to worry about what format it was in.
 
 If the string argument given to it is a valid local filename, it is treated as
 such, and that file's contents are processed instead.
 
-=head1 FUNCTIONS
+# FUNCTIONS
 
-=head2 deserialize( $str[, $hint] )
+## deserialize( $str\[, $hint\] )
 
 Given a string as its first argument, returns a perl data structure by decoding
-the perl (L<Data::Dumper>), JSON, YAML, or TOML string. Or, if the string is a valid
+the perl ([Data::Dumper](https://metacpan.org/pod/Data%3A%3ADumper)), JSON, YAML, or TOML string. Or, if the string is a valid
 filename, by decoding the contents of that file.
 
-If a hint is given as the second argument, where its value is one of C<yaml>,
-C<json>, C<toml> or C<perl>, then this type of deserialization is tried first.
+If a hint is given as the second argument, where its value is one of `yaml`,
+`json`, `toml` or `perl`, then this type of deserialization is tried first.
 This may be necessary in certain rare edge cases where the input value's format
 is ambiguous.
 
 This function can be exported
 
-=cut
+# AUTHOR
 
-use base qw(Exporter);
+Mark Tyrrell `<mark@tyrrminal.dev>`
 
-use File::Basename;
-use IO::All;
-use JSON qw(decode_json);
-use Readonly;
-use Syntax::Keyword::Try;
-use TOML qw(from_toml);
-use YAML::XS;
-
-use experimental qw(signatures);
-
-Readonly::Hash my %FILE_TYPES => (
-  yml  => 'yaml',
-  yaml => 'yaml',
-  toml => 'toml',
-  json => 'json',
-);
-Readonly::Array my @DECODER_PRIORITY => qw(perl yaml json toml);
-
-our @EXPORT_OK = qw(
-  deserialize
-);
-
-sub _decoders() {
-  return (
-    yaml => sub($v) {
-      Load($v);
-    },
-    json => sub($v) {
-      decode_json($v);
-    },
-    toml => sub($v) {
-      from_toml($v)
-    },
-    perl => sub($v) {
-      no warnings 'syntax';
-      eval($v);    ## no critic (ProhibitStringyEval)
-    },
-  );
-}
-
-sub _is_filename($str) {
-  return 0 if ($str =~ /\n/);
-  return (-f $str);
-}
-
-sub deserialize($v, $hint = undef) {
-  return $v if (ref($v) eq 'HASH');
-
-  my @decoders = @DECODER_PRIORITY;
-  my %decoders = _decoders();
-  if (_is_filename($v)) {
-    my ($fn, $dirs, $suffix) = fileparse($v, keys(%FILE_TYPES));
-    unshift(@decoders, $FILE_TYPES{$suffix}) if (defined($suffix) && defined($FILE_TYPES{$suffix}));
-    $v    = io->file($v)->slurp;
-  }
-  unshift(@decoders, $hint) if(defined($hint));
-  my $n;
-  do {
-    $n = shift(@decoders);
-    my $decoder = $decoders{$n};
-    try {
-      my $structure = $decoder->($v);
-       if (ref($structure) eq 'HASH' || ref($structure) eq 'ARRAY') {
-        # warn("decoded using '$n'");
-        return $decoder->($v)
-      }
-    } catch {
-      # ignore any errors and try the next decoder, or die out at the bottom
-    };
-  } while (@decoders);
-  die("Data::Structure::Deserialize::Auto was unable to process the input");
-}
-
-=pod
-
-=head1 AUTHOR
-
-Mark Tyrrell C<< <mark@tyrrminal.dev> >>
-
-=head1 LICENSE
+# LICENSE
 
 Copyright (c) 2024 Mark Tyrrell
 
@@ -171,9 +84,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-=cut
-
-1;
-
-__END__
